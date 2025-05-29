@@ -11,6 +11,13 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+from dotenv import load_dotenv
+import os
+
+# Load environment variables from a .env file
+load_dotenv()
+
+# Get the value of the SECRET_KEY environment variable
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,12 +27,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-fn2iw2-=p(7ze83pfx1v*kjm4l8=cwvj=es^0rwct=31cboxsq'
+SECRET_KEY = os.getenv("SECRET_KEY", default='django-insecure-default-key')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "False").lower() in ('true', '1', 'yes')
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", default='*').split(',')
 
 
 # Application definition
@@ -37,6 +44,32 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+
+    # installed apps
+    'photoshare',
+
+
+    # Third-party apps
+    'allauth',  # For authentication
+    'allauth.account',  # For account management
+    'allauth.socialaccount',  # For social authentication
+    'allauth.socialaccount.providers.google',  # For Google social authentication
+
+    'rest_framework', # For the API
+    'rest_framework.authtoken',  # For token-based authentication
+    'drf_yasg',  # For API documentation
+
+    'django_filters',  # For filtering in DRF
+
+    'storages',  # For handling file storage (e.g., AWS S3)
+
+
+    'corsheaders', # For handling CORS (Cross-Origin Resource Sharing)
+
+    'django_extensions',  # For development utilities
+    'debug_toolbar',  # For debugging during development
+
 ]
 
 MIDDLEWARE = [
@@ -47,6 +80,16 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+
+    # Settings for CORS
+    'corsheaders.middleware.CorsMiddleware',
+
+    # Settings for Debug Toolbar
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
+
+    # Settings for Allauth
+    'allauth.account.middleware.AccountMiddleware',
+    'allauth.socialaccount.middleware.SocialAccountMiddleware',
 ]
 
 ROOT_URLCONF = 'core.urls'
@@ -76,6 +119,13 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
+
+DATABASES += {
+    'photoshare': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'photoshare_db.sqlite3',
     }
 }
 
@@ -114,9 +164,148 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = os.getenv("STATIC_URL", default='/static/')
+STATIC_ROOT = os.getenv("STATIC_ROOT", default=BASE_DIR / 'staticfiles')
+
+
+# Setting up media files (user-uploaded content)
+MEDIA_URL = os.getenv("MEDIA_URL", default='/media/')
+MEDIA_ROOT = os.getenv("MEDIA_ROOT", default=BASE_DIR / 'media')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+
+
+####################################3 Custom Settings for this Project ########################################
+
+
+
+# Logging configuration
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'django.log'),
+            'level': 'DEBUG',  # Set to DEBUG for development, change to INFO or WARNING in production
+            'formatter': 'verbose',
+            'maxBytes': 1024 * 1024 * 5,  # 5 MB
+            'backupCount': 10,  # Keep 10 backup files
+        }
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',  # Set to DEBUG for development, change to INFO or WARNING in production
+        },
+        'photoshare': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',  # Set to DEBUG for development, change to INFO or WARNING in production
+        },
+        'django.request': {
+            'handlers': ['console', 'file'],
+            'level': 'ERROR',  # Log errors in requests
+            'propagate': True,
+        },
+    },
+    'mail_admins': {
+        'level': 'ERROR',  # Only send emails for errors
+        'formatter': 'verbose',
+        'filters': ['require_debug_false'],  # Only send emails if DEBUG is False
+        'class': 'django.utils.log.AdminEmailHandler',
+        'include_html': True,  # Include HTML in the email
+    },
+    'root': {
+        'handlers': ['console', 'file'],
+        'level': 'DEBUG',  # Set to DEBUG for development, change to INFO or WARNING in production
+    },
+}
+
+
+LOGS_DIR = os.getenv("LOGS_DIR", default=BASE_DIR / 'logs')
+if not os.path.exists(LOGS_DIR):
+    os.makedirs(LOGS_DIR)
+# Ensure the logs directory exists
+
+
+# Default Authentications Settings
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    # Allauth authentication backend
+    'allauth.account.auth_backends.AuthenticationBackend',
+    'allauth.socialaccount.auth_backends.SocialAccountBackend',
+
+]
+
+
+# REST Framework settings
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.BasicAuthentication',
+        'rest_framework.authentication.JSONWebTokenAuthentication',  # JWT Authentication
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticatedOrReadOnly',  # Allow read-only access to unauthenticated users
+        'rest_framework.permissions.IsAuthenticated',  # Require authentication for write operations
+    ),
+    'DEFAULT_FILTER_BACKENDS': (
+        'django_filters.rest_framework.DjangoFilterBackend',  # Enable filtering
+    ),
+
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',  # Use page number pagination
+    'PAGE_SIZE': 10,  # Default page size for pagination
+
+    'DEFAULT_SCHEMA_CLASS': 'drf_yasg.generators.OpenAPISchemaGenerator',  # Use drf_yasg for API documentation
+
+    # 'DEFAULT_THROTTLE_CLASSES': [
+    #     'rest_framework.throttling.AnonRateThrottle',
+    #     'rest_framework.throttling.UserRateThrottle'
+    # ],
+    # 'DEFAULT_THROTTLE_RATES': {
+    #     'anon': '100/day',  # For anonymous users
+    #     'user': '1000/day' # For authenticated users
+}
+
+
+
+# CORS settings
+CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", default='*').split(',')
+CORS_ALLOW_ALL_ORIGINS = os.getenv("CORS_ALLOW_ALL_ORIGINS", default='True')
+
+
+# Allauth settings
+
+SITE_ID = 1
+
+ACCOUNT_EMAIL_VERIFICATION = 'optional'
+ACCOUNT_AUTHENTICATION_METHOD = 'username_email'
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_USERNAME_REQUIRED = True
+ACCOUNT_UNIQUE_EMAIL = True
+ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = False
+
+ACCOUNT_EMAIL_SUBJECT_PREFIX = '[Photoshare] '
+
+LOGIN_URL = '/accounts/login/'
+LOGIN_REDIRECT_URL = '/'
+ACCOUNT_LOGOUT_REDIRECT_URL = '/accounts/login/'
