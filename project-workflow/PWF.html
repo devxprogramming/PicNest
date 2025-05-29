@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-P8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Project Tracker: Django Photo Album</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif; /* Tailwind's default sans-serif stack often includes Inter */
+        }
+        .task-checkbox:checked + label span.checkbox-icon::after {
+            content: '✔';
+            color: #0284c7; /* sky-600 */
+        }
+        .checkbox-icon {
+            border: 1px solid #a8a29e; /* stone-400 */
+            width: 1.25rem;
+            height: 1.25rem;
+        }
+        .progress-bar-bg { background-color: #e7e5e4; /* stone-200 */ }
+        .progress-bar-fill { background-color: #0ea5e9; /* sky-500 */ }
+        /* Custom scrollbar for webkit browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9; /* slate-100 */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #94a3b8; /* slate-400 */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b; /* slate-500 */
+        }
+        .sidebar {
+             max-height: calc(100vh - 4rem); /* Adjust based on header/footer height */
+             overflow-y: auto;
+        }
+        .main-content-area {
+            max-height: calc(100vh - 4rem); /* Adjust based on header/footer height */
+            overflow-y: auto;
+        }
+         @media (max-width: 767px) { /* md breakpoint */
+            .sidebar, .main-content-area {
+                max-height: none;
+                overflow-y: visible;
+            }
+        }
+    </style>
+</head>
+<body class="bg-stone-50 text-stone-700 antialiased">
+
+    <div id="app" class="min-h-screen flex flex-col">
+        <header class="bg-stone-800 text-white p-4 shadow-md sticky top-0 z-50">
+            <h1 class="text-2xl md:text-3xl font-bold text-center">Project Tracker: Django Photo Album App</h1>
+        </header>
+
+        <div class="flex-grow flex flex-col md:flex-row p-4 space-y-4 md:space-y-0 md:space-x-4">
+            
+            <aside class="sidebar w-full md:w-1/3 lg:w-1/4 bg-stone-100 p-4 rounded-lg shadow-md flex flex-col space-y-4">
+                <div>
+                    <h2 class="text-xl font-semibold text-stone-800 mb-2 border-b border-stone-300 pb-2">Project Overview</h2>
+                    <p class="text-sm text-stone-600 mb-3">
+                        This interactive tracker helps you manage the development of the Django Photo Album Web App. 
+                        Navigate through the phases, mark tasks as complete, and monitor your overall and phase-specific progress.
+                    </p>
+                </div>
+                
+                <div id="phaseNavigation" class="space-y-2">
+                    <h3 class="text-lg font-medium text-stone-700 mb-1">Phases:</h3>
+                    
+                </div>
+
+                <div>
+                    <h3 class="text-lg font-medium text-stone-700 mb-2">Overall Progress:</h3>
+                    <div class="chart-container relative w-full max-w-xs mx-auto h-10 rounded-md overflow-hidden">
+                         <canvas id="overallProgressChart"></canvas>
+                    </div>
+                    <p id="overallProgressText" class="text-center text-sm font-medium text-sky-600 mt-1"></p>
+                </div>
+            </aside>
+
+            <main id="mainContent" class="main-content-area w-full md:w-2/3 lg:w-3/4 bg-white p-4 rounded-lg shadow-md">
+                <div id="phaseIntro" class="mb-6 p-4 bg-sky-50 border border-sky-200 rounded-md">
+                    <p class="text-sky-700">Select a phase from the sidebar to view its tasks and track your progress. This application is designed to help you systematically work through the development milestones.</p>
+                </div>
+                <div id="taskListContainer" class="space-y-6">
+                    
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        const projectData = [
+            {
+                id: "phase1",
+                name: "Phase 1: Setup & Core Backend",
+                introduction: "This initial phase focuses on setting up the project environment, defining the core database structure, configuring the admin panel, and integrating user authentication. Completing these steps will provide a solid foundation for the application.",
+                tasks: [
+                    {
+                        name: "Project Initialization:",
+                        subTasks: [
+                            { id: "p1_t1_s1", text: "Install Django and necessary base packages." },
+                            { id: "p1_t1_s2", text: "Create a new Django project (e.g., `photo_album_project`)." },
+                            { id: "p1_t1_s3", text: "Create the main Django app (e.g., `gallery` or `photos`)." },
+                            { id: "p1_t1_s4", text: "Initialize a Git repository." },
+                            { id: "p1_t1_s5", text: "Create and activate a Python virtual environment." },
+                            { id: "p1_t1_s6", text: "Add project dependencies to a `requirements.txt` file." }
+                        ]
+                    },
+                    {
+                        name: "Database Modeling (Initial):",
+                        subTasks: [
+                            { id: "p1_t2_s1", text: "Define the `Album` model in `models.py` (owner, title, description, created_at, updated_at, is_public, slug)." },
+                            { id: "p1_t2_s2", text: "Define the `Photo` model in `models.py` (album, uploader, image, title, description, uploaded_at, updated_at)." },
+                            { id: "p1_t2_s3", text: "(Optional) Define `Profile` model if extending user details." },
+                            { id: "p1_t2_s4", text: "(Optional) Define `Tag` model if implementing tagging." },
+                            { id: "p1_t2_s5", text: "Create initial database migrations (`makemigrations`)." },
+                            { id: "p1_t2_s6", text: "Apply migrations to the database (`migrate`)." }
+                        ]
+                    },
+                    {
+                        name: "Admin Panel Setup:",
+                        subTasks: [
+                            { id: "p1_t3_s1", text: "Register `Album` model with the Django Admin." },
+                            { id: "p1_t3_s2", text: "Register `Photo` model with the Django Admin." },
+                            { id: "p1_t3_s3", text: "(Optional) Register `Profile` and `Tag` models if created." },
+                            { id: "p1_t3_s4", text: "Customize admin views for better usability if needed." }
+                        ]
+                    },
+                    {
+                        name: "Authentication Setup (`django-allauth`):",
+                        subTasks: [
+                            { id: "p1_t4_s1", text: "Install `django-allauth`." },
+                            { id: "p1_t4_s2", text: "Add `allauth` to `INSTALLED_APPS`." },
+                            { id: "p1_t4_s3", text: "Configure `AUTHENTICATION_BACKENDS`." },
+                            { id: "p1_t4_s4", text: "Add `allauth` URLs to project `urls.py`." },
+                            { id: "p1_t4_s5", text: "Run migrations for `django-allauth`." },
+                            { id: "p1_t4_s6", text: "Configure basic `django-allauth` settings." },
+                            { id: "p1_t4_s7", text: "(Optional) Customize `django-allauth` templates." }
+                        ]
+                    }
+                ]
+            },
+            {
+                id: "phase2",
+                name: "Phase 2: API Development (Django REST Framework)",
+                introduction: "Phase 2 involves building the API endpoints using Django REST Framework. This includes setting up DRF, creating serializers for your models, implementing ViewSets or APIViews for CRUD operations, and defining permissions for secure API access.",
+                tasks: [
+                    {
+                        name: "Install & Configure DRF and `dj_rest_auth`:",
+                        subTasks: [
+                            { id: "p2_t1_s1", text: "Install Django REST Framework (`djangorestframework`)." },
+                            { id: "p2_t1_s2", text: "Install `dj-rest-auth`." },
+                            { id: "p2_t1_s3", text: "Add `rest_framework` and `dj_rest_auth` to `INSTALLED_APPS`." },
+                            { id: "p2_t1_s4", text: "Add DRF's and `dj_rest_auth`'s URLs." },
+                            { id: "p2_t1_s5", text: "Configure basic DRF settings." }
+                        ]
+                    },
+                    {
+                        name: "Serializers:",
+                        subTasks: [
+                            { id: "p2_t2_s1", text: "Create `AlbumSerializer`." },
+                            { id: "p2_t2_s2", text: "Create `PhotoSerializer`." },
+                            { id: "p2_t2_s3", text: "Create `UserSerializer`." }
+                        ]
+                    },
+                    {
+                        name: "ViewSets/APIViews:",
+                        subTasks: [
+                            { id: "p2_t3_s1", text: "Implement `AlbumViewSet` for CRUD operations on albums." },
+                            { id: "p2_t3_s2", text: "Implement `PhotoViewSet` for CRUD operations on photos." }
+                        ]
+                    },
+                    {
+                        name: "Permissions & Authentication:",
+                        subTasks: [
+                            { id: "p2_t4_s1", text: "Define API permissions (e.g., `IsAuthenticated`)." },
+                            { id: "p2_t4_s2", text: "Implement custom permissions for object ownership." },
+                            { id: "p2_t4_s3", text: "Ensure DRF uses token or session authentication." }
+                        ]
+                    },
+                    {
+                        name: "API Testing (Initial):",
+                        subTasks: [
+                            { id: "p2_t5_s1", text: "Test authentication endpoints." },
+                            { id: "p2_t5_s2", text: "Test CRUD operations for Albums." },
+                            { id: "p2_t5_s3", text: "Test CRUD operations for Photos." }
+                        ]
+                    }
+                ]
+            },
+            {
+                id: "phase3",
+                name: "Phase 3: Core Frontend Development",
+                introduction: "With the backend API in place, Phase 3 focuses on building the user-facing frontend. This includes creating base HTML templates, styling authentication pages, and developing the JavaScript logic for album and photo management features that interact with your API.",
+                tasks: [
+                    {
+                        name: "Base Templates & Static Files:",
+                        subTasks: [
+                            { id: "p3_t1_s1", text: "Create a base HTML template (`base.html`)." },
+                            { id: "p3_t1_s2", text: "Set up Django static file serving." },
+                            { id: "p3_t1_s3", text: "Create basic CSS file (`style.css`)." },
+                            { id: "p3_t1_s4", text: "Create basic JS file (`main.js`)." }
+                        ]
+                    },
+                    {
+                        name: "Authentication Pages Styling:",
+                        subTasks: [
+                            { id: "p3_t2_s1", text: "Create templates in `templates/account/` to override `django-allauth`." },
+                            { id: "p3_t2_s2", text: "Style these pages using your CSS." }
+                        ]
+                    },
+                    {
+                        name: "Album Management Frontend:",
+                        subTasks: [
+                            { id: "p3_t3_s1", text: "List Albums Page: HTML, JS to fetch and display." },
+                            { id: "p3_t3_s2", text: "Create Album Functionality: Modal/form, JS to POST to API." },
+                            { id: "p3_t3_s3", text: "Album Detail Page: HTML, JS to fetch album & photos, gallery display." }
+                        ]
+                    },
+                    {
+                        name: "Photo Management Frontend:",
+                        subTasks: [
+                            { id: "p3_t4_s1", text: "Photo Upload Functionality: HTML form, JS for FormData submission." },
+                            { id: "p3_t4_s2", text: "Display Photos in Album View (covered in Album Detail)." },
+                            { id: "p3_t4_s3", text: "(Optional) Single Photo View Page: HTML, JS to fetch and display." }
+                        ]
+                    }
+                ]
+            },
+            {
+                id: "phase4",
+                name: "Phase 4: Feature Enhancement",
+                introduction: "Phase 4 is about enriching the application with more advanced features such as photo sharing, metadata editing, and user profiles. This phase also includes refining the user interface and experience based on initial implementations.",
+                tasks: [
+                    {
+                        name: "Sharing Functionality:",
+                        subTasks: [
+                            { id: "p4_t1_s1", text: "Backend: Define `Share` model/ManyToMany, API endpoints." },
+                            { id: "p4_t1_s2", text: "Frontend: UI for sharing, JS to call sharing APIs." },
+                            { id: "p4_t1_s3", text: "(Optional) 'Shared With Me' page." }
+                        ]
+                    },
+                    {
+                        name: "Photo Metadata Editing:",
+                        subTasks: [
+                            { id: "p4_t2_s1", text: "Backend: Ensure PUT/PATCH endpoints for photo metadata work." },
+                            { id: "p4_t2_s2", text: "Frontend: 'Edit' buttons, modal/form for editing, JS to submit updates." }
+                        ]
+                    },
+                    {
+                        name: "User Profiles:",
+                        subTasks: [
+                            { id: "p4_t3_s1", text: "Backend: Profile model/serializer, API endpoints for view/update." },
+                            { id: "p4_t3_s2", text: "Frontend: Profile page template, JS to fetch/display/edit data." }
+                        ]
+                    },
+                    {
+                        name: "UI/UX Refinements:",
+                        subTasks: [
+                            { id: "p4_t4_s1", text: "Implement responsive design thoroughly." },
+                            { id: "p4_t4_s2", text: "Add loading indicators for API calls." },
+                            { id: "p4_t4_s3", text: "Implement user-friendly error/success notifications." },
+                            { id: "p4_t4_s4", text: "Add basic client-side form validation." },
+                            { id: "p4_t4_s5", text: "Review and improve navigation and overall flow." }
+                        ]
+                    }
+                ]
+            },
+            {
+                id: "phase5",
+                name: "Phase 5: Testing & Refinement",
+                introduction: "Thorough testing is crucial before deployment. Phase 5 covers comprehensive backend and frontend testing, user acceptance testing (UAT), bug fixing, performance optimization, and a security review to ensure a robust and reliable application.",
+                tasks: [
+                    {
+                        name: "Comprehensive Testing:",
+                        subTasks: [
+                            { id: "p5_t1_s1", text: "Backend Unit Tests: Models, serializers, views/viewsets." },
+                            { id: "p5_t1_s2", text: "Integration Tests: API calls leading to DB changes." },
+                            { id: "p5_t1_s3", text: "Frontend Testing (Manual): User flows, responsiveness across browsers/devices." },
+                            { id: "p5_t1_s4", text: "(Optional) Frontend Automated Testing (Selenium/Cypress)." }
+                        ]
+                    },
+                    {
+                        name: "User Acceptance Testing (UAT):",
+                        subTasks: [
+                            { id: "p5_t2_s1", text: "Get target users to test the application." },
+                            { id: "p5_t2_s2", text: "Gather feedback on usability, features, and bugs." }
+                        ]
+                    },
+                    {
+                        name: "Bug Fixing & Performance Optimization:",
+                        subTasks: [
+                            { id: "p5_t3_s1", text: "Address bugs found during testing and UAT." },
+                            { id: "p5_t3_s2", text: "Optimize database queries (Django Debug Toolbar, `explain`)." },
+                            { id: "p5_t3_s3", text: "Optimize image loading (compression, lazy loading)." },
+                            { id: "p5_t3_s4", text: "Minify CSS and JavaScript for production." }
+                        ]
+                    },
+                    {
+                        name: "Security Review:",
+                        subTasks: [
+                            { id: "p5_t4_s1", text: "Review Django security settings (`check --deploy`)." },
+                            { id: "p5_t4_s2", text: "Ensure protection against common vulnerabilities (XSS, CSRF)." },
+                            { id: "p5_t4_s3", text: "Verify image upload handling is secure." },
+                            { id: "p5_t4_s4", text: "Check permissions logic thoroughly." }
+                        ]
+                    }
+                ]
+            },
+            {
+                id: "phase6",
+                name: "Phase 6: Deployment",
+                introduction: "The final phase is deploying your application to a live server. This involves choosing a hosting platform, configuring the production database, setting up static and media file serving, and configuring web servers like Gunicorn and Nginx.",
+                tasks: [
+                    {
+                        name: "Choose Hosting Platform",
+                        subTasks: [
+                             { id: "p6_t1_s1", text: "Select platform (e.g., Heroku, AWS, DigitalOcean, PythonAnywhere)." }
+                        ]
+                    },
+                    {
+                        name: "Production Database Setup:",
+                        subTasks: [
+                            { id: "p6_t2_s1", text: "Configure PostgreSQL (or chosen production DB)." },
+                            { id: "p6_t2_s2", text: "Set environment variables for database credentials." }
+                        ]
+                    },
+                    {
+                        name: "Static & Media File Handling for Production:",
+                        subTasks: [
+                            { id: "p6_t3_s1", text: "Configure cloud storage (AWS S3, GCS) for media files." },
+                            { id: "p6_t3_s2", text: "Use Whitenoise or Nginx to serve static files." }
+                        ]
+                    },
+                    {
+                        name: "WSGI Server & Reverse Proxy:",
+                        subTasks: [
+                            { id: "p6_t4_s1", text: "Configure Gunicorn as the WSGI server." },
+                            { id: "p6_t4_s2", text: "Configure Nginx as a reverse proxy." }
+                        ]
+                    },
+                    {
+                        name: "Containerization (Recommended):",
+                        subTasks: [
+                            { id: "p6_t5_s1", text: "Create a `Dockerfile` for the Django application." },
+                            { id: "p6_t5_s2", text: "(Optional) Create `docker-compose.yml`." }
+                        ]
+                    },
+                    {
+                        name: "Environment Variables:",
+                        subTasks: [
+                            { id: "p6_t6_s1", text: "Manage all sensitive data via environment variables." }
+                        ]
+                    },
+                    {
+                        name: "CI/CD Pipeline (Optional but Recommended):",
+                        subTasks: [
+                            { id: "p6_t7_s1", text: "Set up a pipeline (GitHub Actions, GitLab CI)." }
+                        ]
+                    },
+                    {
+                        name: "Domain & SSL Configuration:",
+                        subTasks: [
+                            { id: "p6_t8_s1", text: "Point your domain name to the server." },
+                            { id: "p6_t8_s2", text: "Obtain and configure an SSL certificate (Let's Encrypt)." }
+                        ]
+                    },
+                    {
+                        name: "Final Deployment Checks:",
+                        subTasks: [
+                            { id: "p6_t9_s1", text: "Set `DEBUG = False` in production settings." },
+                            { id: "p6_t9_s2", text: "Configure `ALLOWED_HOSTS`." },
+                            { id: "p6_t9_s3", text: "Run `python manage.py check --deploy`." },
+                            { id: "p6_t9_s4", text: "Collect static files (`collectstatic`)." },
+                            { id: "p6_t9_s5", text: "Apply migrations." }
+                        ]
+                    }
+                ]
+            }
+        ];
+
+        // Initialize task states from localStorage or default to false
+        projectData.forEach(phase => {
+            phase.tasks.forEach(task => {
+                task.subTasks.forEach(subTask => {
+                    subTask.completed = JSON.parse(localStorage.getItem(subTask.id)) || false;
+                });
+            });
+        });
+
+        let currentPhaseId = projectData[0].id;
+        let overallProgressChart = null;
+
+        const phaseNavigationContainer = document.getElementById('phaseNavigation');
+        const taskListContainer = document.getElementById('taskListContainer');
+        const phaseIntroContainer = document.getElementById('phaseIntro');
+        const overallProgressText = document.getElementById('overallProgressText');
+
+
+        function renderPhaseNavigation() {
+            phaseNavigationContainer.innerHTML = '<h3 class="text-lg font-medium text-stone-700 mb-1 border-b border-stone-300 pb-1">Phases:</h3>'; // Clear previous items except title
+            projectData.forEach(phase => {
+                const totalSubTasks = phase.tasks.reduce((sum, task) => sum + task.subTasks.length, 0);
+                const completedSubTasks = phase.tasks.reduce((sum, task) => sum + task.subTasks.filter(st => st.completed).length, 0);
+                const phaseProgress = totalSubTasks > 0 ? (completedSubTasks / totalSubTasks) * 100 : 0;
+
+                const navItem = document.createElement('div');
+                navItem.classList.add('mb-1');
+
+                const button = document.createElement('button');
+                button.textContent = phase.name;
+                button.classList.add('w-full', 'text-left', 'p-2', 'rounded-md', 'hover:bg-sky-100', 'focus:outline-none', 'focus:ring-2', 'focus:ring-sky-500', 'transition-colors', 'duration-150');
+                if (phase.id === currentPhaseId) {
+                    button.classList.add('bg-sky-500', 'text-white', 'font-semibold');
+                } else {
+                    button.classList.add('text-stone-700');
+                }
+                button.onclick = () => {
+                    currentPhaseId = phase.id;
+                    renderPhaseNavigation();
+                    renderTasksForCurrentPhase();
+                };
+                navItem.appendChild(button);
+                
+                const progressBarContainer = document.createElement('div');
+                progressBarContainer.classList.add('progress-bar-bg', 'w-full', 'h-2', 'rounded-full', 'mt-1', 'overflow-hidden');
+                const progressBarFill = document.createElement('div');
+                progressBarFill.classList.add('progress-bar-fill', 'h-full', 'rounded-full', 'transition-all', 'duration-300', 'ease-in-out');
+                progressBarFill.style.width = `${phaseProgress.toFixed(0)}%`;
+                progressBarContainer.appendChild(progressBarFill);
+                navItem.appendChild(progressBarContainer);
+
+                phaseNavigationContainer.appendChild(navItem);
+            });
+        }
+
+        function renderTasksForCurrentPhase() {
+            const phase = projectData.find(p => p.id === currentPhaseId);
+            if (!phase) return;
+
+            taskListContainer.innerHTML = ''; 
+            phaseIntroContainer.innerHTML = `<h2 class="text-2xl font-semibold text-stone-800 mb-2">${phase.name}</h2><p class="text-stone-600">${phase.introduction}</p>`;
+
+
+            phase.tasks.forEach(task => {
+                const taskGroup = document.createElement('div');
+                taskGroup.classList.add('p-4', 'border', 'border-stone-200', 'rounded-lg', 'bg-stone-50');
+
+                const taskHeader = document.createElement('h3');
+                taskHeader.textContent = task.name;
+                taskHeader.classList.add('text-lg', 'font-semibold', 'text-stone-700', 'mb-3');
+                taskGroup.appendChild(taskHeader);
+
+                const subTaskList = document.createElement('ul');
+                subTaskList.classList.add('space-y-2', 'list-inside');
+                task.subTasks.forEach(subTask => {
+                    const listItem = document.createElement('li');
+                    listItem.classList.add('flex', 'items-center', 'text-stone-600');
+
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.id = subTask.id;
+                    checkbox.checked = subTask.completed;
+                    checkbox.classList.add('task-checkbox', 'opacity-0', 'w-0', 'h-0', 'absolute'); 
+                    checkbox.onchange = () => toggleSubTask(phase.id, task.name, subTask.id);
+                    
+                    const label = document.createElement('label');
+                    label.htmlFor = subTask.id;
+                    label.classList.add('flex', 'items-center', 'cursor-pointer', 'w-full');
+                    
+                    const customCheckboxIcon = document.createElement('span');
+                    customCheckboxIcon.classList.add('checkbox-icon', 'inline-flex', 'items-center', 'justify-center', 'mr-2', 'rounded', 'flex-shrink-0');
+                    
+                    const labelText = document.createElement('span');
+                    labelText.textContent = subTask.text;
+                    if(subTask.completed) labelText.classList.add('line-through', 'text-stone-400');
+
+
+                    label.appendChild(customCheckboxIcon);
+                    label.appendChild(labelText);
+                    listItem.appendChild(checkbox);
+                    listItem.appendChild(label);
+                    subTaskList.appendChild(listItem);
+                });
+                taskGroup.appendChild(subTaskList);
+                taskListContainer.appendChild(taskGroup);
+            });
+        }
+
+        function toggleSubTask(phaseId, taskName, subTaskId) {
+            const phase = projectData.find(p => p.id === phaseId);
+            const task = phase.tasks.find(t => t.name === taskName);
+            const subTask = task.subTasks.find(st => st.id === subTaskId);
+            subTask.completed = !subTask.completed;
+            localStorage.setItem(subTask.id, subTask.completed); // Save to localStorage
+
+            updateProgress();
+            renderTasksForCurrentPhase(); // Re-render to update strikethroughs
+            renderPhaseNavigation(); // Re-render phase progress bars
+        }
+        
+        function updateProgress() {
+            let totalSubTasksOverall = 0;
+            let completedSubTasksOverall = 0;
+
+            projectData.forEach(phase => {
+                phase.tasks.forEach(task => {
+                    totalSubTasksOverall += task.subTasks.length;
+                    completedSubTasksOverall += task.subTasks.filter(st => st.completed).length;
+                });
+            });
+            
+            const overallPercentage = totalSubTasksOverall > 0 ? (completedSubTasksOverall / totalSubTasksOverall) * 100 : 0;
+            overallProgressText.textContent = `${overallPercentage.toFixed(0)}% Complete`;
+
+            if (overallProgressChart) {
+                overallProgressChart.data.datasets[0].data[0] = overallPercentage;
+                overallProgressChart.update();
+            }
+        }
+
+        function initializeChart() {
+            const ctx = document.getElementById('overallProgressChart').getContext('2d');
+            overallProgressChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Overall Progress'],
+                    datasets: [{
+                        label: 'Progress',
+                        data: [0], 
+                        backgroundColor: ['#0ea5e9'], // sky-500
+                        borderColor: ['#0284c7'], // sky-600
+                        borderWidth: 1,
+                        borderRadius: 4, 
+                        borderSkipped: false 
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: { display: false },
+                            ticks: { display: false }
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: { display: false }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            enabled: true,
+                            callbacks: {
+                                label: function(context) {
+                                    return `Overall Progress: ${context.raw.toFixed(0)}%`;
+                                }
+                            }
+                        }
+                    },
+                    animation: {
+                        duration: 500 
+                    }
+                }
+            });
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            renderPhaseNavigation();
+            renderTasksForCurrentPhase();
+            initializeChart();
+            updateProgress();
+        });
+
+    </script>
+</body>
+</html>
