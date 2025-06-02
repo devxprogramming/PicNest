@@ -1,9 +1,16 @@
-from django.urls import path
+from django.urls import path, include
 from . import views
+
+# REST Framework imports
+from rest_framework.routers import DefaultRouter
+\
+router = DefaultRouter()
+
+
+router.register(r'albums', views.AlbumViewSet, basename='album')
 
 
 urlpatterns = [
-    path('photos/', views.PhotoListView.as_view(), name='photo_list'),
-    path('photos/<int:pk>/', views.PhotoDetailView.as_view(), name='photo_detail'),
-    path('photos/upload/', views.PhotoUploadView.as_view(), name='photo_upload'),
+    path('', include(router.urls)),
 ]
+

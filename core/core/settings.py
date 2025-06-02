@@ -14,6 +14,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 import os
 
+import dj_database_url  # For database configuration from environment variables
+
 # Load environment variables from a .env file
 load_dotenv()
 
@@ -27,12 +29,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv("SECRET_KEY", default='django-insecure-default-key')
+SECRET_KEY = os.environ.get("SECRET_KEY", default='django-insecure-default-key')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv("DEBUG", "False").lower() in ('true', '1', 'yes')
+DEBUG = os.environ.get("DEBUG", "False").lower()
 
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", default='*').split(',')
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", default='*').split(',')
 
 
 # Application definition
@@ -47,6 +49,7 @@ INSTALLED_APPS = [
 
 
     # installed apps
+    # 'users',  # Custom user app for user management
     'photoshare',
 
 
@@ -62,13 +65,13 @@ INSTALLED_APPS = [
 
     'django_filters',  # For filtering in DRF
 
-    'storages',  # For handling file storage (e.g., AWS S3)
+    # 'storages',  # For handling file storage (e.g., AWS S3)
 
 
     'corsheaders', # For handling CORS (Cross-Origin Resource Sharing)
 
     'django_extensions',  # For development utilities
-    'debug_toolbar',  # For debugging during development
+    # 'debug_toolbar',  # For debugging during development
 
 ]
 
@@ -81,15 +84,18 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 
+    # Custom middleware to update last login time
+    # 'users.middleware.UpdateLastLoginMiddleware',
+
     # Settings for CORS
     'corsheaders.middleware.CorsMiddleware',
 
     # Settings for Debug Toolbar
-    'debug_toolbar.middleware.DebugToolbarMiddleware',
+    # 'debug_toolbar.middleware.DebugToolbarMiddleware',
 
     # Settings for Allauth
     'allauth.account.middleware.AccountMiddleware',
-    'allauth.socialaccount.middleware.SocialAccountMiddleware',
+    # 'allauth.socialaccount.middleware.SocialAccountMiddleware',
 ]
 
 ROOT_URLCONF = 'core.urls'
@@ -122,12 +128,9 @@ DATABASES = {
     }
 }
 
-DATABASES += {
-    'photoshare': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'photoshare_db.sqlite3',
-    }
-}
+DATABASES['default'] = dj_database_url.parse(os.environ.get("RENDER_EXTERNAL_DB_CONNECTION_URL", default='sqlite:///db.sqlite3'), conn_max_age=600) # Use RENDER_EXTERNAL_DB_CONNECTION_URL for production, or default to SQLite in development. Conn_max_age is set to 600 seconds (10 minutes) for persistent connections.
+
+
 
 
 # Password validation
@@ -168,9 +171,16 @@ STATIC_URL = os.getenv("STATIC_URL", default='/static/')
 STATIC_ROOT = os.getenv("STATIC_ROOT", default=BASE_DIR / 'staticfiles')
 
 
+
+
 # Setting up media files (user-uploaded content)
-MEDIA_URL = os.getenv("MEDIA_URL", default='/media/')
-MEDIA_ROOT = os.getenv("MEDIA_ROOT", default=BASE_DIR / 'media')
+MEDIA_URL =  '/media/'
+MEDIA_ROOT =  '/media/'
+
+
+# if not os.path.exists(MEDIA_ROOT):
+#     os.makedirs(MEDIA_ROOT)  # Ensure the media directory exists
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -193,6 +203,10 @@ LOGGING = {
             'format': '{levelname} {asctime} {module} {message}',
             'style': '{',
         },
+        'minimal': {
+            'format': 'Date and Time: {asctime}\nLevel: {levelname}\nModule: {module}\nMessage: {message}\n',
+            'style': '{',
+        },
         'simple': {
             'format': '{levelname} {message}',
             'style': '{',
@@ -203,19 +217,20 @@ LOGGING = {
             'class': 'logging.StreamHandler',
         },
         'file': {
-            'class': 'logging.FileHandler',
+            'class': 'logging.handlers.RotatingFileHandler',
             'filename': os.path.join(BASE_DIR, 'django.log'),
             'level': 'DEBUG',  # Set to DEBUG for development, change to INFO or WARNING in production
-            'formatter': 'verbose',
+            'formatter': 'minimal',
             'maxBytes': 1024 * 1024 * 5,  # 5 MB
             'backupCount': 10,  # Keep 10 backup files
         }
     },
     'loggers': {
-        'django': {
-            'handlers': ['console', 'file'],
-            'level': 'DEBUG',  # Set to DEBUG for development, change to INFO or WARNING in production
-        },
+        # 'django': {
+        #     'handlers': ['file'],
+        #     'level': 'DEBUG',  # Set to DEBUG for development, change to INFO or WARNING in production
+        #     'formatter': 'simple',
+        # },   # this overrides the default django logger to log to file only
         'photoshare': {
             'handlers': ['console', 'file'],
             'level': 'DEBUG',  # Set to DEBUG for development, change to INFO or WARNING in production
@@ -240,10 +255,12 @@ LOGGING = {
 }
 
 
-LOGS_DIR = os.getenv("LOGS_DIR", default=BASE_DIR / 'logs')
+LOGS_DIR = BASE_DIR / 'logs'  # Directory for log files
 if not os.path.exists(LOGS_DIR):
     os.makedirs(LOGS_DIR)
 # Ensure the logs directory exists
+LOGGING['handlers']['file']['filename'] = os.path.join(LOGS_DIR, 'photoshare.log')  # Set the log file path
+
 
 
 # Default Authentications Settings
@@ -251,7 +268,6 @@ AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
     # Allauth authentication backend
     'allauth.account.auth_backends.AuthenticationBackend',
-    'allauth.socialaccount.auth_backends.SocialAccountBackend',
 
 ]
 
@@ -262,7 +278,6 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.BasicAuthentication',
-        'rest_framework.authentication.JSONWebTokenAuthentication',  # JWT Authentication
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticatedOrReadOnly',  # Allow read-only access to unauthenticated users
@@ -275,7 +290,6 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',  # Use page number pagination
     'PAGE_SIZE': 10,  # Default page size for pagination
 
-    'DEFAULT_SCHEMA_CLASS': 'drf_yasg.generators.OpenAPISchemaGenerator',  # Use drf_yasg for API documentation
 
     # 'DEFAULT_THROTTLE_CLASSES': [
     #     'rest_framework.throttling.AnonRateThrottle',
@@ -289,8 +303,37 @@ REST_FRAMEWORK = {
 
 
 # CORS settings
-CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", default='*').split(',')
-CORS_ALLOW_ALL_ORIGINS = os.getenv("CORS_ALLOW_ALL_ORIGINS", default='True')
+# CORS_ALLOWED_ORIGINS = [
+#     'http://localhost:3000',  # Allow local development server
+#     'http://127.0.0.1:3000',  # Allow local development server
+# ]
+
+CORS_ALLOW_ALL_ORIGINS = True
+
+
+# DRF-YASG settings for API documentation
+SWAGGER_SETTINGS = {
+    'USE_SESSION_AUTH': False,  # Disable session authentication for Swagger
+    'SECURITY_DEFINITIONS': {
+        'Token': {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'in': 'header',
+        },
+    },
+    'DEFAULT_SCHEMA_CLASS': 'drf_yasg.inspectors.SwaggerAutoSchema',  # Use drf_yasg for API documentation
+}
+SCHEMA_CONFIG = {
+    'TITLE': 'Photoshare API',
+    'DESCRIPTION': 'API documentation for the Photoshare application',
+    'VERSION': '1.0.0',
+    'CONTACT': {
+        'name': 'Photoshare Support',
+        'email': 'support@photoshare.com',
+    },
+    # 'PERMISSIONS': [permissions.AllowAny],
+    'PUBLIC': True,
+}
 
 
 # Allauth settings
@@ -298,9 +341,8 @@ CORS_ALLOW_ALL_ORIGINS = os.getenv("CORS_ALLOW_ALL_ORIGINS", default='True')
 SITE_ID = 1
 
 ACCOUNT_EMAIL_VERIFICATION = 'optional'
-ACCOUNT_AUTHENTICATION_METHOD = 'username_email'
-ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_USERNAME_REQUIRED = True
+ACCOUNT_LOGIN_METHODS = {'username', 'email'}
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*'] # To make email and username required during signup
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = False
 
@@ -309,3 +351,10 @@ ACCOUNT_EMAIL_SUBJECT_PREFIX = '[Photoshare] '
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/'
 ACCOUNT_LOGOUT_REDIRECT_URL = '/accounts/login/'
+
+
+
+# Email Configuration
+ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 3
+ACCOUNT_EMAIL_CONFIRMATION_HMAC = True
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'http'

@@ -15,6 +15,7 @@ class PhotoSerializer(serializers.ModelSerializer):
         read_only_fields = ('uploaded_at',)
 
 class TagSerializer(serializers.ModelSerializer):
+    created_by = serializers.HiddenField(default=serializers.CurrentUserDefault())
     class Meta:
         model = Tag
         fields = '__all__'
