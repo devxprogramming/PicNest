@@ -23,6 +23,7 @@ pillow==11.2.1
 psycopg2==2.9.10
 pycparser==2.22
 pygments==2.19.1
+python-decouple==3.8
 python-dotenv==1.1.0
 pytz==2025.2
 pyyaml==6.0.2

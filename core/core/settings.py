@@ -13,11 +13,12 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 from dotenv import load_dotenv
 import os
+from decouple import config  # For reading environment variables
 
 import dj_database_url  # For database configuration from environment variables
 
 # Load environment variables from a .env file
-load_dotenv()
+
 
 # Get the value of the SECRET_KEY environment variable
 
@@ -29,12 +30,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get("SECRET_KEY", default='django-insecure-default-key')
+SECRET_KEY = config('SECRET_KEY', default='your-default-secret-key')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get("DEBUG", "False").lower()
+DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", default='*').split(',')
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*').split(',')
 
 
 # Application definition
@@ -128,8 +129,8 @@ DATABASES = {
     }
 }
 
-DATABASES['default'] = dj_database_url.parse(os.environ.get("RENDER_EXTERNAL_DB_CONNECTION_URL", default='sqlite:///db.sqlite3'), conn_max_age=600) # Use RENDER_EXTERNAL_DB_CONNECTION_URL for production, or default to SQLite in development. Conn_max_age is set to 600 seconds (10 minutes) for persistent connections.
 
+DATABASES["default"] = dj_database_url.parse(config("DATABASE_URL", default="sqlite:///db.sqlite3"))  # Use RENDER_EXTERNAL_DB_CONNECTION_URL for production, or default to SQLite in development. Conn_max_age is set to 600 seconds (10 minutes) for persistent connections.
 
 
 
