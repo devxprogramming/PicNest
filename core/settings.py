@@ -41,6 +41,7 @@ ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*').split(',')
 # Application definition
 
 INSTALLED_APPS = [
+    'corsheaders', # For handling CORS (Cross-Origin Resource Sharing)
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -51,7 +52,7 @@ INSTALLED_APPS = [
 
     # installed apps
     # 'users',  # Custom user app for user management
-    'photoshare',
+    'photoshare.apps.PhotoshareConfig',
 
 
     # Third-party apps
@@ -69,7 +70,6 @@ INSTALLED_APPS = [
     # 'storages',  # For handling file storage (e.g., AWS S3)
 
 
-    'corsheaders', # For handling CORS (Cross-Origin Resource Sharing)
 
     'django_extensions',  # For development utilities
     # 'debug_toolbar',  # For debugging during development
